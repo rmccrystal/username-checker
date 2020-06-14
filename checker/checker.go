@@ -35,13 +35,22 @@ func (c Checker) worker() {
 		username := <-c.Usernames
 
 		var status Status
-		// If the username is cached
-		if cachedStatus := CacheGet(c.Service.Name, username); cachedStatus != StatusUnknown {
-			status = cachedStatus
+
+		// Check if the username is valid
+		if c.Service.Valid(username) {
+			// If the username is cached
+			if cachedStatus := CacheGet(c.Service.Name, username); cachedStatus != StatusUnknown {
+				status = cachedStatus
+			} else {
+				// Else, check the username and cache it
+				status = c.Service.Available(username)
+				// Cache only if the status is known
+				if status != StatusUnknown {
+					CacheAppend(c.Service.Name, username, status)
+				}
+			}
 		} else {
-			// Else, check the username and cache it
-			status = c.Service.Available(username)
-			CacheAppend(c.Service.Name, username, status)
+			status = StatusInvalid
 		}
 
 		c.Results <- Result{

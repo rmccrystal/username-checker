@@ -4,6 +4,7 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"net/http"
+	"unicode"
 )
 
 /*
@@ -12,10 +13,12 @@ import (
  */
 type Service struct {
 	Name      string
+	Valid	  validatorFunction
 	Available availableFunction
 }
 
 type availableFunction func(string) Status
+type validatorFunction func(string) bool
 type Status int8
 
 const (
@@ -45,5 +48,23 @@ func generateHTTPAvailableFunction(method string, endpoint string, status func(r
 		}
 
 		return status(resp)
+	}
+}
+
+// Generates a validator function which validates based on a min and max length and the standard alphanumeric charset
+func generateDefaultValidatorFunction(minLen int, maxLen int) validatorFunction {
+	return func(username string) bool {
+		// Verify that the username is alphanumeric
+		for _, char := range username {
+			if !unicode.IsLetter(char) && !unicode.IsNumber(char) {
+				return false
+			}
+		}
+
+		if len(username) < minLen || len(username) > maxLen {
+			return false
+		}
+
+		return true
 	}
 }

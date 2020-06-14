@@ -12,6 +12,7 @@ import (
 var Services = []Service{
 	{
 		Name: "Fortnite",
+		Valid: generateDefaultValidatorFunction(3, 16),
 		Available: generateHTTPAvailableFunction(
 			"GET",
 			"https://www.epicgames.com/id/api/account/name/state/%s",
@@ -31,6 +32,7 @@ var Services = []Service{
 	},
 	{
 		Name: "Github",
+		Valid: generateDefaultValidatorFunction(1, 39),
 		Available: generateHTTPAvailableFunction(
 			"GET",
 			"https://github.com/%s",
@@ -48,6 +50,7 @@ var Services = []Service{
 	},
 	{
 		Name: "UnknownCheats",
+		Valid: generateDefaultValidatorFunction(1, 15),
 		Available: func(username string) Status {
 			endpoint := "https://www.unknowncheats.me/forum/ajax.php?do=verifyusername"
 			// format the payload with the username
