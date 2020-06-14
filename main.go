@@ -5,7 +5,6 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"os"
-	"strings"
 	"username-checker/checker"
 )
 
@@ -16,15 +15,17 @@ func main() {
 	})
 
 	// If there are no args, return
-	if len(os.Args) <= 1 {
-		log.Fatalf("You must specify the service to use. \n\nAvailable services: %s", strings.Join(checker.GetServiceNames(), ", "))
-	}
-	// Get flags
+	//if len(os.Args) <= 1 {
+	//	log.Fatalf("You must specify the service to use. \n\nAvailable services: %s", strings.Join(checker.GetServiceNames(), ", "))
+	//}
+
 	//var serviceName = flag.String("service", nil, )
 
 	ch := checker.NewChecker(checker.GetService("unknowncheats"), 20)
 
+	// Create a new goroutine to parse the results
 	go func() {
+		// iterate the results channel
 		for result := range ch.Results {
 			switch result.Status {
 			case checker.StatusAvailable:
@@ -40,6 +41,7 @@ func main() {
 		}
 	}()
 
+	// Put lines from stdin into usernames chan
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		ch.Usernames <- scanner.Text()

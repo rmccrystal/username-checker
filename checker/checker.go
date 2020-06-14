@@ -8,7 +8,7 @@ type Checker struct {
 
 type Result struct {
 	Username string
-	Status Status
+	Status   Status
 }
 
 func NewChecker(service *Service, threads int) *Checker {
@@ -17,8 +17,8 @@ func NewChecker(service *Service, threads int) *Checker {
 
 	checker := Checker{
 		Usernames: usernameChan,
-		Results: resultsChan,
-		Service: service,
+		Results:   resultsChan,
+		Service:   service,
 	}
 
 	// Create workers
@@ -33,7 +33,17 @@ func (c Checker) worker() {
 	for {
 		// Get a username
 		username := <-c.Usernames
-		status := c.Service.Available(username)
+
+		var status Status
+		// If the username is cached
+		if cachedStatus := CacheGet(c.Service.Name, username); cachedStatus != StatusUnknown {
+			status = cachedStatus
+		} else {
+			// Else, check the username and cache it
+			status = c.Service.Available(username)
+			CacheAppend(c.Service.Name, username, status)
+		}
+
 		c.Results <- Result{
 			Username: username,
 			Status:   status,
