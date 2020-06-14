@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Days that a cache entry is valid
@@ -20,15 +21,16 @@ type cacheEntry struct {
 	ServiceName string
 	Username    string
 	Status      Status
+	Time        time.Time
 }
 
 func (c cacheEntry) Serialize() string {
-	return fmt.Sprintf("%s|%s|%d", c.ServiceName, c.Username, c.Status)
+	return fmt.Sprintf("%s|%s|%d|%d", c.ServiceName, c.Username, c.Status, c.Time.Unix())
 }
 
 /*
  * The cache file contains lined formatted as such:
- * (serviceName)|(username)|(status)
+ * (serviceName)|(username)|(status)|(unix time)
  */
 const cacheFileName = "cache.txt"
 
@@ -56,7 +58,7 @@ func readCacheFile(fileName string) ([]cacheEntry, error) {
 		split := strings.Split(line, "|")
 
 		// If the line if not formatted correctly, return an error
-		if len(split) != 3 {
+		if len(split) != 4 {
 			return nil, fmt.Errorf("line in cache file %s was not formatted correctly: %s", fileName, line)
 		}
 
@@ -71,11 +73,21 @@ func readCacheFile(fileName string) ([]cacheEntry, error) {
 			return nil, fmt.Errorf("status must be less than %d in cache file %s: %d", int(StatusUnknown), fileName, statusNum)
 		}
 
+		// Parse the time
+		entryTimeUnix, err := strconv.ParseInt(split[3], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid number in cache file %s: %s", fileName, line)
+		}
+
+		// Make a time object from the unix
+		entryTime := time.Unix(int64(entryTimeUnix), 0)
+
 		// Create our new cache entry from this line
 		var newCacheEntry cacheEntry
 		newCacheEntry.ServiceName = split[0]
 		newCacheEntry.Username = split[1]
 		newCacheEntry.Status = Status(statusNum)
+		newCacheEntry.Time = entryTime
 
 		// Append our new entry
 		entries = append(entries, newCacheEntry)
@@ -120,7 +132,8 @@ func CacheGet(serviceName string, username string) Status {
 
 	// Iterate through the entries until we find an entry with the specified serviceName and username
 	for _, entry := range entries {
-		if entry.Username == username && entry.ServiceName == serviceName {
+		hasExpired := entry.Time.Add(CacheExpireDays*24*time.Hour).Unix() < time.Now().Unix()
+		if entry.Username == username && entry.ServiceName == serviceName && !hasExpired {
 			return entry.Status
 		}
 	}
@@ -134,6 +147,7 @@ func CacheAppend(serviceName string, username string, status Status) {
 		ServiceName: serviceName,
 		Username:    username,
 		Status:      status,
+		Time:        time.Now(),
 	}})
 
 	if err != nil {
